@@ -207,6 +207,12 @@ def research_data_reducer(
 ) -> list[ResearchData]:
     """Reducer for merging research data from parallel workers.
     
+    This reducer handles:
+    - Deduplication based on source_id
+    - Merge of metadata from multiple sources
+    - Sorting by collection time
+    - Tracking source provenance and worker attribution
+    
     Args:
         existing: Existing research data list
         new: New research data to merge
@@ -226,10 +232,83 @@ def research_data_reducer(
     
     # Add/update with new entries
     for item in new:
-        merged[item.source_id] = item
+        if item.source_id in merged:
+            # Merge metadata from multiple workers
+            existing_item = merged[item.source_id]
+            merged_metadata = existing_item.metadata.copy()
+            new_metadata = item.metadata.copy()
+            
+            # Merge worker tracking info
+            existing_workers = merged_metadata.get("workers", [])
+            new_worker = new_metadata.get("worker_id")
+            if new_worker and new_worker not in existing_workers:
+                existing_workers.append(new_worker)
+            
+            # Merge source information
+            existing_sources = merged_metadata.get("sources", [])
+            if "url" in new_metadata and new_metadata["url"] not in existing_sources:
+                existing_sources.append(new_metadata["url"])
+            
+            # Update relevance scores (take max)
+            existing_score = merged_metadata.get("relevance_score", 0.0)
+            new_score = new_metadata.get("relevance_score", 0.0)
+            merged_metadata["relevance_score"] = max(existing_score, new_score)
+            
+            # Update with latest metadata
+            merged_metadata.update(new_metadata)
+            merged_metadata["workers"] = existing_workers
+            merged_metadata["sources"] = existing_sources
+            merged_metadata["last_updated"] = item.collected_at.isoformat()
+            
+            # Update the item
+            merged[item.source_id] = ResearchData(
+                source_id=item.source_id,
+                content=item.content,  # Keep original content
+                perspective=item.perspective,
+                metadata=merged_metadata,
+                collected_at=item.collected_at,
+            )
+        else:
+            # Add new entry
+            # Ensure metadata has required tracking info
+            metadata = item.metadata.copy()
+            if "worker_id" not in metadata:
+                metadata["worker_id"] = "unknown"
+            if "sources" not in metadata:
+                metadata["sources"] = [metadata.get("url", "")]
+            if "workers" not in metadata:
+                metadata["workers"] = [metadata.get("worker_id", "unknown")]
+            
+            merged[item.source_id] = ResearchData(
+                source_id=item.source_id,
+                content=item.content,
+                perspective=item.perspective,
+                metadata=metadata,
+                collected_at=item.collected_at,
+            )
     
     # Return as list, sorted by collected_at
     return sorted(merged.values(), key=lambda x: x.collected_at)
+
+
+def source_map_reducer(
+    existing: Optional[dict[str, Source]], new: dict[str, Source]
+) -> dict[str, Source]:
+    """Reducer for merging source maps from parallel workers.
+    
+    Args:
+        existing: Existing source map
+        new: New source map to merge
+        
+    Returns:
+        Merged source map with deduplication
+    """
+    if existing is None:
+        return new
+    
+    merged = existing.copy()
+    merged.update(new)
+    return merged
 
 
 class ResearchState(TypedDict, total=False):
@@ -255,7 +334,7 @@ class ResearchState(TypedDict, total=False):
     research_data: Annotated[list[ResearchData], research_data_reducer]
     
     # Source tracking
-    source_map: dict[str, Source]
+    source_map: Annotated[dict[str, Source], source_map_reducer]
     
     # Report drafting
     draft_sections: list[DraftSection]
