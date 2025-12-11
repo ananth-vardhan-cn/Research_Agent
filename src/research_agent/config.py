@@ -62,7 +62,7 @@ class LLMConfig(BaseSettings):
         description="Google Gemini API key",
     )
     gemini_model: str = Field(
-        default="gemini-1.5-pro",
+        default="gemini-2.0-flash-exp",
         description="Gemini model to use",
     )
 

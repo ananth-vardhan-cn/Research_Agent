@@ -25,6 +25,25 @@ class Perspective(BaseModel):
     )
 
 
+class Section(BaseModel):
+    """A section in the research outline."""
+
+    title: str = Field(..., description="Section title")
+    description: str = Field(..., description="Section description")
+    subsections: list[str] = Field(
+        default_factory=list, description="List of subsection titles"
+    )
+    dependencies: list[str] = Field(
+        default_factory=list, description="Dependencies on other sections"
+    )
+    required_sources: list[str] = Field(
+        default_factory=list, description="Types of sources required"
+    )
+    perspectives: list[str] = Field(
+        default_factory=list, description="Relevant perspectives"
+    )
+
+
 class PlanStep(BaseModel):
     """A single step in the research plan."""
 
@@ -34,14 +53,22 @@ class PlanStep(BaseModel):
     estimated_time: Optional[int] = Field(
         None, ge=0, description="Estimated time in seconds"
     )
+    dependencies: list[int] = Field(
+        default_factory=list, description="Step numbers this step depends on"
+    )
 
 
 class Plan(BaseModel):
-    """Research plan."""
+    """Research plan with STORM methodology."""
 
+    title: str = Field(..., description="Research plan title")
+    outline: list[Section] = Field(default_factory=list, description="Hierarchical outline")
     steps: list[PlanStep] = Field(default_factory=list, description="Plan steps")
     perspectives: list[str] = Field(
         default_factory=list, description="Perspectives to consider"
+    )
+    thinking_log: list[str] = Field(
+        default_factory=list, description="Visible thinking and reasoning log"
     )
     estimated_cost: Optional[float] = Field(
         None, ge=0.0, description="Estimated cost in USD"
@@ -104,6 +131,44 @@ class FinalReport(BaseModel):
     )
     created_at: datetime = Field(
         default_factory=datetime.now, description="Report creation time"
+    )
+
+
+class WorkPackage(BaseModel):
+    """A parallelizable work package for research workers."""
+
+    package_id: str = Field(..., description="Unique package identifier")
+    section_title: str = Field(..., description="Section this package relates to")
+    queries: list[str] = Field(..., description="Search queries to execute")
+    perspective: Optional[str] = Field(None, description="Associated perspective")
+    dependencies: list[str] = Field(
+        default_factory=list, description="Package IDs this depends on"
+    )
+    status: str = Field(
+        default="pending",
+        description="Status: pending, in_progress, completed, failed"
+    )
+    assigned_at: Optional[datetime] = Field(None, description="When package was assigned")
+    completed_at: Optional[datetime] = Field(None, description="When package was completed")
+
+
+class GapAnalysis(BaseModel):
+    """Analysis of research gaps."""
+
+    missing_perspectives: list[str] = Field(
+        default_factory=list, description="Missing perspectives"
+    )
+    missing_sources: list[str] = Field(
+        default_factory=list, description="Missing source types"
+    )
+    incomplete_sections: list[str] = Field(
+        default_factory=list, description="Sections needing more research"
+    )
+    confidence_score: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Confidence in completeness"
+    )
+    needs_more_research: bool = Field(
+        default=False, description="Whether more research is needed"
     )
 
 
@@ -180,6 +245,11 @@ class ResearchState(TypedDict, total=False):
     # Research planning
     perspectives: list[Perspective]
     plan: Optional[Plan]
+    
+    # Research management
+    work_packages: list[WorkPackage]
+    gap_analysis: Optional[GapAnalysis]
+    research_wave: int
     
     # Research data with reducer for parallel writes
     research_data: Annotated[list[ResearchData], research_data_reducer]
