@@ -7,6 +7,7 @@ from research_agent.models.state import (
     Critique,
     DraftSection,
     FinalReport,
+    GapAnalysis,
     Plan,
     PlanStep,
     Perspective,
@@ -15,6 +16,7 @@ from research_agent.models.state import (
     Source,
     Task,
     VisitHistory,
+    WorkPackage,
 )
 
 
@@ -40,6 +42,20 @@ def serialize_state(state: ResearchState) -> dict[str, Any]:
     # Serialize plan
     if "plan" in state:
         result["plan"] = state["plan"].model_dump(mode="json") if state["plan"] else None
+    
+    # Serialize work_packages
+    if "work_packages" in state:
+        result["work_packages"] = [wp.model_dump(mode="json") for wp in state["work_packages"]]
+    
+    # Serialize gap_analysis
+    if "gap_analysis" in state:
+        result["gap_analysis"] = (
+            state["gap_analysis"].model_dump(mode="json") if state["gap_analysis"] else None
+        )
+    
+    # Serialize research_wave
+    if "research_wave" in state:
+        result["research_wave"] = state["research_wave"]
     
     # Serialize research_data
     if "research_data" in state:
@@ -107,6 +123,18 @@ def deserialize_state(data: dict[str, Any]) -> ResearchState:
     # Deserialize plan
     if "plan" in data and data["plan"]:
         state["plan"] = Plan(**data["plan"])
+    
+    # Deserialize work_packages
+    if "work_packages" in data and data["work_packages"]:
+        state["work_packages"] = [WorkPackage(**wp) for wp in data["work_packages"]]
+    
+    # Deserialize gap_analysis
+    if "gap_analysis" in data and data["gap_analysis"]:
+        state["gap_analysis"] = GapAnalysis(**data["gap_analysis"])
+    
+    # Deserialize research_wave
+    if "research_wave" in data:
+        state["research_wave"] = data["research_wave"]
     
     # Deserialize research_data
     if "research_data" in data and data["research_data"]:
