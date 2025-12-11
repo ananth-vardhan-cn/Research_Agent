@@ -56,13 +56,22 @@ def create_research_graph(settings: Settings) -> StateGraph:
         settings = get_settings()
         return await worker_node(state, settings)
     
+    async def writer_wrapper(state: ResearchState) -> ResearchState:
+        return await writer_node(state, gemini_client)
+
+    async def reviewer_wrapper(state: ResearchState) -> ResearchState:
+        return await reviewer_node(state, gemini_client)
+
+    async def publisher_wrapper(state: ResearchState) -> ResearchState:
+        return await publisher_node(state, gemini_client)
+    
     # Add nodes
     graph.add_node("planner", planner_wrapper)
     graph.add_node("manager", manager_wrapper)
     graph.add_node("worker", worker_wrapper)
-    graph.add_node("writer", writer_node)
-    graph.add_node("reviewer", reviewer_node)
-    graph.add_node("publisher", publisher_node)
+    graph.add_node("writer", writer_wrapper)
+    graph.add_node("reviewer", reviewer_wrapper)
+    graph.add_node("publisher", publisher_wrapper)
     
     # Define conditional edges
     def should_continue_after_planner(
@@ -134,6 +143,17 @@ def create_research_graph(settings: Settings) -> StateGraph:
         
         logger.info("critique_passed_publishing")
         return "publisher"
+
+    def should_continue_after_publisher(
+        state: ResearchState,
+    ) -> Literal["writer", END]:
+        """Check for user feedback after publisher."""
+        if state.get("user_feedback"):
+            logger.info("publisher_revision_requested")
+            return "writer"
+            
+        logger.info("publishing_complete")
+        return END
     
     # Set entry point
     graph.set_entry_point("planner")
@@ -184,8 +204,15 @@ def create_research_graph(settings: Settings) -> StateGraph:
         },
     )
     
-    # Publisher → END
-    graph.add_edge("publisher", END)
+    # Publisher → Writer/END (HITL revision loop)
+    graph.add_conditional_edges(
+        "publisher",
+        should_continue_after_publisher,
+        {
+            "writer": "writer",
+            END: END,
+        },
+    )
     
     logger.info("research_graph_created")
     
@@ -207,6 +234,8 @@ def compile_research_graph(settings: Settings) -> StateGraph:
     compiled = graph.compile(
         # Interrupt before continuing from planner for HITL
         interrupt_before=["manager"],
+        # Interrupt after publisher for final review
+        interrupt_after=["publisher"],
         # Enable checkpointing
         checkpointer=None,  # Will be set by the execution layer
     )
