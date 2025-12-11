@@ -16,6 +16,7 @@ from research_agent.nodes import (
     worker_node,
     writer_node,
 )
+from research_agent.dependencies import get_settings
 
 logger = structlog.get_logger()
 
@@ -50,10 +51,15 @@ def create_research_graph(settings: Settings) -> StateGraph:
     async def manager_wrapper(state: ResearchState) -> ResearchState:
         return await research_manager_node(state, gemini_client)
     
+    async def worker_wrapper(state: ResearchState) -> ResearchState:
+        # Get settings for worker node
+        settings = get_settings()
+        return await worker_node(state, settings)
+    
     # Add nodes
     graph.add_node("planner", planner_wrapper)
     graph.add_node("manager", manager_wrapper)
-    graph.add_node("worker", worker_node)
+    graph.add_node("worker", worker_wrapper)
     graph.add_node("writer", writer_node)
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("publisher", publisher_node)
