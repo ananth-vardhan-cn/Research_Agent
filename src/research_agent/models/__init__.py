@@ -13,6 +13,20 @@ from research_agent.models.responses import (
     StateResponse,
     StatusResponse,
 )
+from research_agent.models.state import (
+    Critique,
+    DraftSection,
+    FinalReport,
+    Plan,
+    PlanStep,
+    Perspective,
+    ResearchData,
+    ResearchState,
+    Source,
+    Task,
+    VisitHistory,
+    research_data_reducer,
+)
 
 __all__ = [
     "ApprovalRequest",
@@ -24,4 +38,16 @@ __all__ = [
     "QueryResponse",
     "StateResponse",
     "StatusResponse",
+    "Critique",
+    "DraftSection",
+    "FinalReport",
+    "Plan",
+    "PlanStep",
+    "Perspective",
+    "ResearchData",
+    "ResearchState",
+    "Source",
+    "Task",
+    "VisitHistory",
+    "research_data_reducer",
 ]
