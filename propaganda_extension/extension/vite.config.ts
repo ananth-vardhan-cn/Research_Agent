@@ -11,11 +11,13 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'index.html'),
         background: resolve(__dirname, 'src/background.ts'),
+        content: resolve(__dirname, 'src/content.ts'),
       },
       output: {
         format: 'es',
         entryFileNames: (chunk) => {
           if (chunk.name === 'background') return 'background.js';
+          if (chunk.name === 'content') return 'assets/content.js';
           return 'assets/[name]-[hash].js';
         },
       },
