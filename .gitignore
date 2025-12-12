@@ -69,6 +69,12 @@ logs/
 # Redis
 dump.rdb
 
+# Node / extension
+node_modules/
+**/node_modules/
+**/dist/
+**/.vite/
+
 # Project specific
 research_data/
 output/

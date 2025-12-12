@@ -1,0 +1,14 @@
+# Extension
+extension/node_modules/
+extension/dist/
+extension/.vite/
+
+# Backend
+backend/.venv/
+backend/.uv/
+backend/__pycache__/
+backend/*.pyc
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.pytest_cache/
+backend/.env
